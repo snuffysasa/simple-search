@@ -70,7 +70,7 @@
     )
   )
 ;; Check elements in usedItems to see if they are in items. If they are then return true
-(defn check-used-items [items usedItems]
+(defn check-used-items [items usedItems choices]
   (let [cur (first usedItems)]
     (if (= () usedItems)
       true
@@ -84,7 +84,41 @@
   )
   )
 
+(defn checkItem [item usedItems times]
 
+  (if (= times 0)
+    usedItems
+
+    (if (and (= (:weight item) (:weight (nth usedItems (- times 1)))) (= (:value item) (:value (nth usedItems (- times 1)))))
+
+      (let [] (println "found Item")
+        (vec (concat (subvec usedItems 0 (- times 1)) (subvec usedItems times))))
+      (checkItem item usedItems (- times 1))
+      )
+    )
+  )
+
+
+
+
+  (checkItem {:weight 1 :value 5} [{:weight 1 :value 5}{:weight 1 :value 5}] 1)
+
+
+;; return list of choices
+(defn makeChoices[items usedItems choices]
+  (if (= (count items) 0)
+    choices
+  (let [newUsedItems (checkItem (first items) usedItems (count usedItems))]
+    (if (= (count newUsedItems) (count usedItems))
+      (makeChoices (rest items) usedItems (conj choices 0))
+      (makeChoices (rest items) newUsedItems (conj choices 1))
+    )
+
+   )
+  )
+ )
+
+(makeChoices [{:weight 1 :value 5}{:weight 2 :value 5}] [{:weight 1 :value 5} {:weight 1 :value 5}] [])
 
 ;; Does the knapsack problem
 ;; 1) generates ratios with getRatios
@@ -98,7 +132,9 @@
         usedItems (grab-items ratios
         [] (:capacity problem ) 0)
         ]
-      {:correct (check-used-items (:items problem) usedItems)
+      {:correct (check-used-items (:items problem) {:usedItems usedItems :choices []})
+       :instance {:items (:items problem) :capacity (:capacity problem )}
+       :choices (makeChoices (:items problem) usedItems [])
        :value (get-value usedItems)
        :weight (get-weight usedItems)
        :maxWeight (:capacity problem)
@@ -127,8 +163,7 @@
   "Construct a random answer for the given instance of the
   knapsack problem."
   [instance]
-  (let [choices (repeatedly (count (:items instance))
-                            #(rand-int 2))
+  (let [choices (:choices (knapsack instance))
         included (included-items (:items instance) choices)]
     {:instance instance
      :choices choices
@@ -192,17 +227,17 @@
     (if (> (:score (add-score finalFinalFinalAnswer)) (:score (add-score currentBest)))
       (random-flip-check finalFinalFinalAnswer (- remainingTries 1))
       (random-flip-check currentBest (- remainingTries 1))
-      )
+      )knapsack
     )
     (add-score currentBest)
     )
   )
 
 
-(random-flip-search knapPI_16_20_1000_14 1000
-)
+(time (:score (random-flip-search knapPI_16_20_1000_15 10
+)))
 
-(knapsack knapPI_16_200_1000_79)
+(:value (knapsack knapPI_16_20_1000_15))
 
 (knapsack knapPI_16_1000_1000_79)
 
