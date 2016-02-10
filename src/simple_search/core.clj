@@ -132,7 +132,7 @@
         usedItems (grab-items ratios
         [] (:capacity problem ) 0)
         ]
-      {:correct (check-used-items (:items problem) {:usedItems usedItems :choices []})
+      {
        :instance {:items (:items problem) :capacity (:capacity problem )}
        :choices (makeChoices (:items problem) usedItems [])
        :value (get-value usedItems)
@@ -227,7 +227,7 @@
     (if (> (:score (add-score finalFinalFinalAnswer)) (:score (add-score currentBest)))
       (random-flip-check finalFinalFinalAnswer (- remainingTries 1))
       (random-flip-check currentBest (- remainingTries 1))
-      )knapsack
+      )
     )
     (add-score currentBest)
     )
