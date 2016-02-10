@@ -22,13 +22,13 @@ This strategy seems a little worse then just climbing one hill, but increasing t
 
 Results:
 Running once on knapPI_16_20_1000_1 with 1000 mutations:
-  Idea 2: 2070N
-  Idea 3: 2050N
-  Idea 4: 2093N
+  - Idea 2: 2070N
+  - Idea 3: 2050N
+  - Idea 4: 2093N
 
 Running once on knapPI_16_200_1000_1 with 1000 mutations:
-  Idea 2: -28716N
-  Idea 3: -12280N
-  Idea 4: 5193N
+  - Idea 2: -28716N
+  - Idea 3: -12280N
+  - Idea 4: 5193N
 
   - This did not do well for Idea 2 and 2. I think this is because we did not run enough mutations. Also we decided to use normal recursion instead of loop recur. This was a bad decision because we stack overflow around 4000 tries. If I had time to rewrite it I am sure we would get better results.
