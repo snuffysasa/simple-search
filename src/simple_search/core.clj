@@ -250,13 +250,35 @@
     )
   )
 
+(defn random-flip-jump [currentBest remainingTries instance]
+  (if (= remainingTries 0)
+    ;then
+    currentBest
+    ;else
+    (if (mod remainingTries 50)
+      (let [jump (random-flip-search instance 50)]
+          (println "We jumped")
+          (random-flip-jump (max-key :score currentBest jump) (- remainingTries 50) instance)
+        )
+      currentBest
+    )
 
-;; random flip search is made with a random starting answer
+  )
+)
+
+
+;; This is Idea 4, the random jumping function
+(random-flip-jump (random-flip-search knapPI_16_20_1000_15 50) 950 knapPI_16_20_1000_15)
+
+
+
+
+;; random flip search is made with a random starting answer. This is Idea 2
 
 (:score (random-flip-search knapPI_16_20_1000_15 1000
 ))
 
-;; greedy flip search is made with a greedy starting answer
+;; greedy flip search is made with a greedy starting answer. This is Idea 3
 (:score (greedy-flip-search knapPI_16_20_1000_15 100
 ))
 
