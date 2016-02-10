@@ -84,6 +84,8 @@
   )
   )
 
+;; Checks an item to see if it is in the list of used items.
+;; if it is it removes it from usedItems
 (defn checkItem [item usedItems times]
 
   (if (= times 0)
@@ -104,7 +106,8 @@
   (checkItem {:weight 1 :value 5} [{:weight 1 :value 5}{:weight 1 :value 5}] 1)
 
 
-;; return list of choices
+;; return list of choices ([0 1 0]) that maps 0s and 1s to the values in items.
+;; it will be a 1 if the item is in usedItems and 0 if not.
 (defn makeChoices[items usedItems choices]
   (if (= (count items) 0)
     choices
@@ -120,7 +123,7 @@
 
 (makeChoices [{:weight 1 :value 5}{:weight 2 :value 5}] [{:weight 1 :value 5} {:weight 2 :value 5}] [])
 
-;; Does the knapsack problem
+;; Does the knapsack problem greedily
 ;; 1) generates ratios with getRatios
 ;; 2) Get all items that fit by hightest ratios and highest weight
 ;; 3) Ensure all used items exist in the original list
@@ -142,6 +145,15 @@
   )
 )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;
+;;;;;;;;;;;
+;;;;;;;;;;; Hillclimbing code
+;;;;;;;;;;;
+;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 
 ;;; An answer will be a map with (at least) four entries:
 ;;;   * :instance
@@ -160,7 +172,7 @@
                (map vector items choices))))
 
 (defn greedy-answer
-  "Construct a random answer for the given instance of the
+  "Construct a greedy answer for the given instance of the
   knapsack problem."
   [instance]
   (let [choices (:choices (knapsack instance))
@@ -200,17 +212,21 @@
   [answer]
   (assoc answer :score (score answer)))
 
+;; does normal random search and takes the best answer found
 (defn random-search
   [instance max-tries]
   (apply max-key :score
          (map add-score
               (repeatedly max-tries #(random-answer instance)))))
 
+;; Creates a random answer to the problem and then runs random-flip-check to climb the hill.
 (defn random-flip-search [instance max-tries]
   (let [startAnswer (random-answer instance)]
     (random-flip-check startAnswer max-tries)
     )
   )
+
+;; Creates a greedy answer to the problem and then runs random-flip-check to climb the hill.
 
 (defn greedy-flip-search [instance max-tries]
   (let [startAnswer (greedy-answer instance)]
@@ -218,7 +234,7 @@
     )
   )
 
-;; This will flip a random bit from a 1 to a 0 or a 0 to a 1 between 1 to 3 times
+;; This will flip a random bit from a 1 to a 0 or a 0 to a 1 n number of times.
 
 (defn random-flip [answer times]
   (if (> times -1)
@@ -234,7 +250,8 @@
   )
 )
 
-
+;; random-flip-check takes the current best and remainingTries, flips 0 to 3 bits and compares the resulting score to the current best's score
+;; whichever is higher is taken as the current best for the next loop of recursion.
 (defn random-flip-check [currentBest remainingTries]
   (if (> remainingTries 0)
     (let [finalAnswer (assoc currentBest :choices (random-flip (:choices currentBest) (rand-int 4)))
@@ -250,6 +267,8 @@
     )
   )
 
+;; random-flip-jump takes the current best, the remaining tries that are to be done, and the instance which is used to jump to a new answer.
+;; It runs random-flip-search 100 times, and then jumps to a new random answer and runs that 100 times. It then compares the two, keeps the best, and recurses with remaining tries - 100
 (defn random-flip-jump [currentBest remainingTries instance]
   (if (<= remainingTries 0)
     ;then
@@ -268,6 +287,7 @@
 
 
 ;; This is Idea 4, the random jumping function
+(:score (random-search knapPI_16_20_1000_1 1000))
 (:score (random-flip-jump (random-flip-search knapPI_16_20_1000_1 100) 1000 knapPI_16_20_1000_1))
 
 
