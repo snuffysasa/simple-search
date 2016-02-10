@@ -105,7 +105,7 @@
 
 
 ;; return list of choices
-(defn makeChoices[items usedItems]
+(defn makeChoices[items usedItems choices]
   (if (= (count items) 0)
     choices
   (let [newUsedItems (checkItem (first items) usedItems (count usedItems))]
@@ -251,14 +251,14 @@
   )
 
 (defn random-flip-jump [currentBest remainingTries instance]
-  (if (= remainingTries 0)
+  (if (<= remainingTries 0)
     ;then
     currentBest
     ;else
-    (if (mod remainingTries 50)
-      (let [jump (random-flip-search instance 50)]
+    (if (mod remainingTries 100)
+      (let [jump (random-flip-search instance 100)]
           (println "We jumped")
-          (random-flip-jump (max-key :score currentBest jump) (- remainingTries 50) instance)
+          (random-flip-jump (max-key :score currentBest jump) (- remainingTries 100) instance)
         )
       currentBest
     )
@@ -268,24 +268,17 @@
 
 
 ;; This is Idea 4, the random jumping function
-(random-flip-jump (random-flip-search knapPI_16_20_1000_15 50) 950 knapPI_16_20_1000_15)
-
-
+(:score (random-flip-jump (random-flip-search knapPI_16_20_1000_1 100) 1000 knapPI_16_20_1000_1))
 
 
 ;; random flip search is made with a random starting answer. This is Idea 2
-
-(:score (random-flip-search knapPI_16_20_1000_15 1000
-))
+(:score (random-flip-search knapPI_16_20_1000_1 1000))
 
 ;; greedy flip search is made with a greedy starting answer. This is Idea 3
-(:score (greedy-flip-search knapPI_16_20_1000_15 100
-))
+(:score (greedy-flip-search knapPI_16_20_1000_1 1000))
 
 ;; Both result in pretty much the same consistency of final answer.
-
-
-(:value (knapsack knapPI_16_20_1000_15))
+(:value (knapsack knapPI_16_20_1000_1))
 
 (knapsack knapPI_16_1000_1000_79)
 
