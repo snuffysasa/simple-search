@@ -105,7 +105,7 @@
 
 
 ;; return list of choices
-(defn makeChoices[items usedItems choices]
+(defn makeChoices[items usedItems]
   (if (= (count items) 0)
     choices
   (let [newUsedItems (checkItem (first items) usedItems (count usedItems))]
@@ -118,7 +118,7 @@
   )
  )
 
-(makeChoices [{:weight 1 :value 5}{:weight 2 :value 5}] [{:weight 1 :value 5} {:weight 1 :value 5}] [])
+(makeChoices [{:weight 1 :value 5}{:weight 2 :value 5}] [{:weight 1 :value 5} {:weight 2 :value 5}] [])
 
 ;; Does the knapsack problem
 ;; 1) generates ratios with getRatios
@@ -132,7 +132,7 @@
         usedItems (grab-items ratios
         [] (:capacity problem ) 0)
         ]
-      {:correct (check-used-items (:items problem) {:usedItems usedItems :choices []})
+      {
        :instance {:items (:items problem) :capacity (:capacity problem )}
        :choices (makeChoices (:items problem) usedItems [])
        :value (get-value usedItems)
@@ -159,11 +159,22 @@
        (filter #(= 1 (second %))
                (map vector items choices))))
 
-(defn random-answer
+(defn greedy-answer
   "Construct a random answer for the given instance of the
   knapsack problem."
   [instance]
   (let [choices (:choices (knapsack instance))
+        included (included-items (:items instance) choices)]
+    {:instance instance
+     :choices choices
+     :total-weight (reduce + (map :weight included))
+     :total-value (reduce + (map :value included))}))
+
+(defn random-answer
+  "Construct a random answer for the given instance of the
+  knapsack problem."
+  [instance]
+  (let [choices (repeatedly (count (:items instance)) #(rand-int 2))
         included (included-items (:items instance) choices)]
     {:instance instance
      :choices choices
@@ -201,6 +212,12 @@
     )
   )
 
+(defn greedy-flip-search [instance max-tries]
+  (let [startAnswer (greedy-answer instance)]
+    (random-flip-check startAnswer max-tries)
+    )
+  )
+
 ;; This will flip a random bit from a 1 to a 0 or a 0 to a 1 between 1 to 3 times
 
 (defn random-flip [answer times]
@@ -227,15 +244,24 @@
     (if (> (:score (add-score finalFinalFinalAnswer)) (:score (add-score currentBest)))
       (random-flip-check finalFinalFinalAnswer (- remainingTries 1))
       (random-flip-check currentBest (- remainingTries 1))
-      )knapsack
+      )
     )
     (add-score currentBest)
     )
   )
 
 
-(time (:score (random-flip-search knapPI_16_20_1000_15 10
-)))
+;; random flip search is made with a random starting answer
+
+(:score (random-flip-search knapPI_16_20_1000_15 1000
+))
+
+;; greedy flip search is made with a greedy starting answer
+(:score (greedy-flip-search knapPI_16_20_1000_15 100
+))
+
+;; Both result in pretty much the same consistency of final answer.
+
 
 (:value (knapsack knapPI_16_20_1000_15))
 
