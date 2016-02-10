@@ -103,7 +103,7 @@
 
 
 
-  (checkItem {:weight 1 :value 5} [{:weight 1 :value 5}{:weight 1 :value 5}] 1)
+;  (checkItem {:weight 1 :value 5} [{:weight 1 :value 5}{:weight 1 :value 5}] 1)
 
 
 ;; return list of choices ([0 1 0]) that maps 0s and 1s to the values in items.
@@ -121,7 +121,7 @@
   )
  )
 
-(makeChoices [{:weight 1 :value 5}{:weight 2 :value 5}] [{:weight 1 :value 5} {:weight 2 :value 5}] [])
+;(makeChoices [{:weight 1 :value 5}{:weight 2 :value 5}] [{:weight 1 :value 5} {:weight 2 :value 5}] [])
 
 ;; Does the knapsack problem greedily
 ;; 1) generates ratios with getRatios
@@ -219,20 +219,17 @@
          (map add-score
               (repeatedly max-tries #(random-answer instance)))))
 
-;; Creates a random answer to the problem and then runs random-flip-check to climb the hill.
-(defn random-flip-search [instance max-tries]
-  (let [startAnswer (random-answer instance)]
-    (random-flip-check startAnswer max-tries)
-    )
-  )
 
-;; Creates a greedy answer to the problem and then runs random-flip-check to climb the hill.
+;; Runs random-flip-check to climb the hill of either a random answer or a greedy answer depending on the argument greedy.
 
-(defn greedy-flip-search [instance max-tries]
+(defn flip-search [instance max-tries greedy]
   (let [startAnswer (greedy-answer instance)]
-    (random-flip-check startAnswer max-tries)
+    (if greedy
+      (random-flip-check (greedy-answer instance) max-tries)
+      (random-flip-check (random-answer instance) max-tries)
     )
   )
+)
 
 ;; This will flip a random bit from a 1 to a 0 or a 0 to a 1 n number of times.
 
@@ -275,7 +272,7 @@
     currentBest
     ;else
     (if (mod remainingTries 100)
-      (let [jump (random-flip-search instance 100)]
+      (let [jump (flip-search instance 100 false)]
           (println "We jumped")
           (random-flip-jump (max-key :score currentBest jump) (- remainingTries 100) instance)
         )
@@ -285,22 +282,47 @@
   )
 )
 
+;; Does the same as random-flip-check but setup to be ran by an iterate function
+(defn random-flip-check-iterate [currentBest]
+    (let [finalAnswer (assoc currentBest :choices (random-flip (:choices currentBest) (rand-int 4)))
+          finalFinalAnswer (assoc finalAnswer :total-weight (reduce + (map :weight (included-items (:items (:instance currentBest)) (:choices finalAnswer)))))
+          finalFinalFinalAnswer (assoc finalFinalAnswer :total-value (reduce + (map :value (included-items (:items (:instance currentBest)) (:choices finalAnswer)))))]
+
+    (if (> (:score (add-score finalFinalFinalAnswer)) (:score (add-score currentBest)))
+      (add-score finalFinalFinalAnswer)
+      (add-score currentBest)
+      )
+    )
+  )
+
+;; Does the same as flip-search but uses iterate instead of recursing by hand. if greedy is true then start with greedy, otherwise start with random
+(defn flip-search-nice [instance max-tries greedy]
+  (if greedy
+    (nth (take max-tries (iterate random-flip-check-iterate (greedy-answer instance))) (dec max-tries))
+    (nth (take max-tries (iterate random-flip-check-iterate (random-answer instance))) (dec max-tries))
+   )
+  )
+
+;(flip-search-nice knapPI_16_20_1000_1 10000 false)
+
+
+
 
 ;; This is Idea 4, the random jumping function
-(:score (random-search knapPI_16_20_1000_1 1000))
-(:score (random-flip-jump (random-flip-search knapPI_16_20_1000_1 100) 1000 knapPI_16_20_1000_1))
+;(:score (random-search knapPI_16_20_1000_1 1000))
+;(:score (random-flip-jump (flip-search knapPI_16_20_1000_1 100 false) 1000 knapPI_16_20_1000_1))
 
 
 ;; random flip search is made with a random starting answer. This is Idea 2
-(:score (random-flip-search knapPI_16_20_1000_1 1000))
+;(:score (flip-search knapPI_16_20_1000_1 1000 false))
 
 ;; greedy flip search is made with a greedy starting answer. This is Idea 3
-(:score (greedy-flip-search knapPI_16_20_1000_1 1000))
+;(:score (flip-search knapPI_16_20_1000_1 1000 true))
 
 ;; Both result in pretty much the same consistency of final answer.
-(:value (knapsack knapPI_16_20_1000_1))
+;(:value (knapsack knapPI_16_20_1000_1))
 
-(knapsack knapPI_16_1000_1000_79)
+;(knapsack knapPI_16_1000_1000_79)
 
 
 
