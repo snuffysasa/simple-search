@@ -93,7 +93,7 @@
 
     (if (and (= (:weight item) (:weight (nth usedItems (- times 1)))) (= (:value item) (:value (nth usedItems (- times 1)))))
 
-      (let [] (println "found Item")
+      (let []
         (vec (concat (subvec usedItems 0 (- times 1)) (subvec usedItems times))))
       (checkItem item usedItems (- times 1))
       )
@@ -128,7 +128,7 @@
 ;; 2) Get all items that fit by hightest ratios and highest weight
 ;; 3) Ensure all used items exist in the original list
 ;; 4) Get the total value and total weight and return a map with those and the items used to make it
-(defn knapsack[problem]
+(defn knapsack[problem num-tries]
   (let [
         ratios (sort comp-ratios
           (getRatios (:items problem ) []))
@@ -175,12 +175,23 @@
   "Construct a greedy answer for the given instance of the
   knapsack problem."
   [instance]
-  (let [choices (:choices (knapsack instance))
+  (let [choices (:choices (knapsack instance 1))
         included (included-items (:items instance) choices)]
     {:instance instance
      :choices choices
      :total-weight (reduce + (map :weight included))
      :total-value (reduce + (map :value included))}))
+
+(defn greedy-answerer
+  "Construct a greedy answer for the given instance of the
+  knapsack problem."
+  [scorer scorr instance tries]
+  (let [choices (:choices (knapsack instance 1))
+        included (included-items (:items instance) choices)]
+    (scorer {:instance instance
+     :choices choices
+     :total-weight (reduce + (map :weight included))
+     :total-value (reduce + (map :value included))} scorr)))
 
 (defn random-answer
   "Construct a random answer for the given instance of the
@@ -196,9 +207,18 @@
 ;;; It might be cool to write a function that
 ;;; generates weighted proportions of 0's and 1's.
 
+
 (defn score
   "Takes the total-weight of the given answer unless it's over capacity,
    in which case we return 0."
+  [answer]
+  (if (> (:total-weight answer)
+         (:capacity (:instance answer)))
+    0
+    (:total-value answer)))
+(defn penalized-score
+  "Takes the total-weight of the given answer unless it's over capacity,
+   in which case we return over capacity * -1"
   [answer]
   (if (> (:total-weight answer)
          (:capacity (:instance answer)))
@@ -209,30 +229,21 @@
 (defn add-score
   "Computes the score of an answer and inserts a new :score field
    to the given answer, returning the augmented answer."
-  [answer]
-  (assoc answer :score (score answer)))
+  [answer score-function]
+  (assoc answer :score (score-function answer)))
 
 ;; does normal random search and takes the best answer found
 (defn random-search
-  [instance max-tries]
+  [score-function instance max-tries]
   (apply max-key :score
-         (map add-score
+         (map #(add-score % score-function)
               (repeatedly max-tries #(random-answer instance)))))
 
 
 ;; Runs random-flip-check to climb the hill of either a random answer or a greedy answer depending on the argument greedy.
 
-(defn flip-search [instance max-tries greedy]
-  (let [startAnswer (greedy-answer instance)]
-    (if greedy
-      (random-flip-check (greedy-answer instance) max-tries)
-      (random-flip-check (random-answer instance) max-tries)
-    )
-  )
-)
 
 ;; This will flip a random bit from a 1 to a 0 or a 0 to a 1 n number of times.
-
 (defn random-flip [answer times]
   (if (> times -1)
   (let [randIndex (rand-int (count answer))
@@ -249,67 +260,60 @@
 
 ;; random-flip-check takes the current best and remainingTries, flips 0 to 3 bits and compares the resulting score to the current best's score
 ;; whichever is higher is taken as the current best for the next loop of recursion.
-(defn random-flip-check [currentBest remainingTries]
-  (if (> remainingTries 0)
-    (let [finalAnswer (assoc currentBest :choices (random-flip (:choices currentBest) (rand-int 4)))
-          finalFinalAnswer (assoc finalAnswer :total-weight (reduce + (map :weight (included-items (:items (:instance currentBest)) (:choices finalAnswer)))))
-          finalFinalFinalAnswer (assoc finalFinalAnswer :total-value (reduce + (map :value (included-items (:items (:instance currentBest)) (:choices finalAnswer)))))]
 
-    (if (> (:score (add-score finalFinalFinalAnswer)) (:score (add-score currentBest)))
-      (random-flip-check finalFinalFinalAnswer (- remainingTries 1))
-      (random-flip-check currentBest (- remainingTries 1))
-      )
-    )
-    (add-score currentBest)
-    )
-  )
 
 ;; random-flip-jump takes the current best, the remaining tries that are to be done, and the instance which is used to jump to a new answer.
 ;; It runs random-flip-search 100 times, and then jumps to a new random answer and runs that 100 times. It then compares the two, keeps the best, and recurses with remaining tries - 100
-(defn random-flip-jump [currentBest remainingTries instance]
-  (if (<= remainingTries 0)
-    ;then
-    currentBest
-    ;else
-    (if (mod remainingTries 100)
-      (let [jump (flip-search instance 100 false)]
-          (println "We jumped")
-          (random-flip-jump (max-key :score currentBest jump) (- remainingTries 100) instance)
-        )
-      currentBest
-    )
 
+;; Does the same as flip-search but uses iterate instead of recursing by hand. if greedy is true then start with greedy, otherwise start with random
+(defn hill-climber [search-strategy mutate-answer score-function make-answer instance max-tries]
+    (nth (take max-tries (iterate (partial search-strategy instance max-tries score-function mutate-answer) (make-answer instance))) (dec max-tries))
   )
-)
 
 ;; Does the same as random-flip-check but setup to be ran by an iterate function
-(defn random-flip-check-iterate [currentBest]
-    (let [finalAnswer (assoc currentBest :choices (random-flip (:choices currentBest) (rand-int 4)))
+(defn random-flip-check-iterate [instance max-tries score-function mutate-answer currentBest]
+    (let [finalAnswer (assoc currentBest :choices (mutate-answer (:choices currentBest) (rand-int 4)))
           finalFinalAnswer (assoc finalAnswer :total-weight (reduce + (map :weight (included-items (:items (:instance currentBest)) (:choices finalAnswer)))))
           finalFinalFinalAnswer (assoc finalFinalAnswer :total-value (reduce + (map :value (included-items (:items (:instance currentBest)) (:choices finalAnswer)))))]
 
-    (if (> (:score (add-score finalFinalFinalAnswer)) (:score (add-score currentBest)))
-      (add-score finalFinalFinalAnswer)
-      (add-score currentBest)
+    (if (> (:score (add-score finalFinalFinalAnswer score-function)) (:score (add-score currentBest score-function)))
+      (add-score finalFinalFinalAnswer score-function)
+      (add-score currentBest score-function)
       )
     )
   )
 
-;; Does the same as flip-search but uses iterate instead of recursing by hand. if greedy is true then start with greedy, otherwise start with random
-(defn flip-search-nice [instance max-tries greedy]
-  (if greedy
-    (nth (take max-tries (iterate random-flip-check-iterate (greedy-answer instance))) (dec max-tries))
-    (nth (take max-tries (iterate random-flip-check-iterate (random-answer instance))) (dec max-tries))
-   )
+;; Does the same as random-flip-check but setup to be ran by an iterate function
+(defn random-flip-check-jump [instance max-tries score-function mutate-answer currentBest]
+  (if (= (rand-int (/ max-tries 10)) 0)
+    (let [finalFinalFinalAnswer (hill-climber random-flip-check-iterate mutate-answer score-function random-answer instance (/ max-tries 10))]
+
+      (if (> (:score (add-score finalFinalFinalAnswer score-function)) (:score (add-score currentBest score-function)))
+        (add-score finalFinalFinalAnswer score-function)
+        (add-score currentBest score-function)
+        )
+      )
+    (let [finalAnswer (assoc currentBest :choices (mutate-answer (:choices currentBest) (rand-int 4)))
+          finalFinalAnswer (assoc finalAnswer :total-weight (reduce + (map :weight (included-items (:items (:instance currentBest)) (:choices finalAnswer)))))
+          finalFinalFinalAnswer (assoc finalFinalAnswer :total-value (reduce + (map :value (included-items (:items (:instance currentBest)) (:choices finalAnswer)))))]
+
+      (if (> (:score (add-score finalFinalFinalAnswer score-function)) (:score (add-score currentBest score-function)))
+        (add-score finalFinalFinalAnswer score-function)
+        (add-score currentBest score-function)
+        )
+      )
+    )
   )
 
-;(flip-search-nice knapPI_16_20_1000_1 10000 false)
+
+
+;(:score (hill-climber random-flip-check-jump random-flip penalized-score random-answer knapPI_11_200_1000_1 10000))
 
 
 
 
 ;; This is Idea 4, the random jumping function
-;(:score (random-search knapPI_16_20_1000_1 1000))
+;(:score (random-search knapPI_16_20_1000_1 1000 penalized-score))
 ;(:score (random-flip-jump (flip-search knapPI_16_20_1000_1 100 false) 1000 knapPI_16_20_1000_1))
 
 
